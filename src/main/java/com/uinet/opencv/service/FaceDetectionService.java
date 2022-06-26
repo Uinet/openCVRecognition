@@ -1,5 +1,6 @@
 package com.uinet.opencv.service;
 
+import com.uinet.opencv.entity.Image;
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
@@ -9,8 +10,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -20,22 +23,12 @@ public class FaceDetectionService {
 
     private final Resource faceResource = new ClassPathResource("haarcascade_frontalface_default.xml");
 
-    public byte[] detectFace() throws IOException {
-
-        MatOfRect faceDetections = new MatOfRect();
-        CascadeClassifier faceDetector = new CascadeClassifier(faceResource.getFile().getAbsolutePath());
-
-        String fileName ="C:/Users/malce/Downloads/314ce31a-9469-4469-841a-85022a4dc754.jpg";
-
-        Mat image = Imgcodecs.imread(fileName);
-        faceDetector.detectMultiScale(image, faceDetections, 2);
-
-        logger.info(String.format("Detected %s faces", faceDetections.toArray().length));
-
-        return drawRectanglesOnImage(image, faceDetections.toList());
+    public Image getImageWithDetectedFaces(MultipartFile inputImage) throws IOException {
+        Mat image = Imgcodecs.imdecode(new MatOfByte(inputImage.getBytes()), Imgcodecs.IMREAD_UNCHANGED);
+        return drawRectanglesOnImage(image, getFaces(image, 2).toList());
     }
 
-    public byte[] drawRectanglesOnImage(Mat image, List<Rect> rectangles) {
+    public Image drawRectanglesOnImage(Mat image, List<Rect> rectangles) {
         for (Rect rect: rectangles) {
             Imgproc.rectangle(
                     image,
@@ -47,9 +40,29 @@ public class FaceDetectionService {
         return mat2Image(image);
     }
 
-    private byte[] mat2Image(Mat frame) {
+    private Image mat2Image(Mat frame) {
         MatOfByte buffer = new MatOfByte();
         Imgcodecs.imencode(".jpg", frame, buffer);
-        return buffer.toArray();
+        return new Image(buffer.toArray());
+    }
+
+    private MatOfRect getFaces(Mat image, double scaleFactor) throws IOException {
+        MatOfRect faceDetections = new MatOfRect();
+        CascadeClassifier faceDetector = new CascadeClassifier(faceResource.getFile().getAbsolutePath());
+        faceDetector.detectMultiScale(image, faceDetections, scaleFactor);
+        logger.info(String.format("Detected %s faces", faceDetections.toArray().length));
+        return faceDetections;
+    }
+
+    public List<Image> getFaceImages(MultipartFile inputImage) throws IOException {
+        List<Image> result = new ArrayList<>();
+        Mat image = Imgcodecs.imdecode(new MatOfByte(inputImage.getBytes()), Imgcodecs.IMREAD_UNCHANGED);
+        MatOfRect faceDetections = getFaces(image, 2.1);
+
+        for (Rect rect: faceDetections.toList()) {
+            result.add(mat2Image(new Mat(image, rect)));
+        }
+
+        return result;
     }
 }
