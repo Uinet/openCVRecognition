@@ -1,5 +1,6 @@
 package com.uinet.opencv;
 
+import nu.pattern.OpenCV;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -8,6 +9,7 @@ public class OpencvApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(OpencvApplication.class, args);
+		OpenCV.loadShared();
 	}
 
 }
